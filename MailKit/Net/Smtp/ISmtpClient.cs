@@ -81,6 +81,20 @@ namespace MailKit.Net.Smtp {
 		uint MaxSize { get; }
 
 		/// <summary>
+		/// Get or set whether the client should use the REQUIRETLS extension if it is available.
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets or sets whether the client should use the REQUIRETLS extension if it is available.</para>
+		/// <para>The REQUIRETLS extension (as defined in rfc8689) is a way to ensure that every SMTP server
+		/// that a message passes through on its way to the recipient is required to use a TLS connection in
+		/// order to transfer the message to the next SMTP server.</para>
+		/// <note type="note">This feature is only available if <see cref="Capabilities"/> contains the
+		/// <see cref="SmtpCapabilities.RequireTLS"/> flag when sending the message.</note>
+		/// </remarks>
+		/// <value><see langword="true" /> if the REQUIRETLS extension should be used; otherwise, <see langword="false" />.</value>
+		bool RequireTLS { get; set; }
+
+		/// <summary>
 		/// Get or set how much of the message to include in any failed delivery status notifications.
 		/// </summary>
 		/// <remarks>
@@ -102,7 +116,7 @@ namespace MailKit.Net.Smtp {
 		/// <param name="alias">The mailing address alias.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="alias"/> is <c>null</c>.
+		/// <paramref name="alias"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="alias"/> is an empty string.
@@ -140,7 +154,7 @@ namespace MailKit.Net.Smtp {
 		/// <param name="alias">The mailing address alias.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="alias"/> is <c>null</c>.
+		/// <paramref name="alias"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="alias"/> is an empty string.
@@ -179,7 +193,7 @@ namespace MailKit.Net.Smtp {
 		/// <param name="address">The mailbox address.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="address"/> is <c>null</c>.
+		/// <paramref name="address"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="address"/> is an empty string.
@@ -218,7 +232,7 @@ namespace MailKit.Net.Smtp {
 		/// <param name="address">The mailbox address.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="address"/> is <c>null</c>.
+		/// <paramref name="address"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="address"/> is an empty string.

@@ -33,10 +33,10 @@ using MimeKit;
 
 namespace MailKit {
 	/// <summary>
-	/// An interface for retreiving messages from a spool.
+	/// An interface for retrieving messages from a spool.
 	/// </summary>
 	/// <remarks>
-	/// <para>An interface for retreiving messages from a spool.</para>
+	/// <para>An interface for retrieving messages from a spool.</para>
 	/// <para>Implemented by <see cref="MailKit.Net.Pop3.Pop3Client"/>.</para>
 	/// </remarks>
 	public interface IMailSpool : IMailService, IEnumerable<MimeMessage>
@@ -63,7 +63,7 @@ namespace MailKit {
 		/// along with <see cref="GetMessageUid(int, CancellationToken)"/> and
 		/// <see cref="GetMessageUids(CancellationToken)"/> will fail.</para>
 		/// </remarks>
-		/// <value><c>true</c> if supports uids; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if supports uids; otherwise, <see langword="false" />.</value>
 		bool SupportsUids { get; }
 
 		/// <summary>
@@ -324,7 +324,7 @@ namespace MailKit {
 		/// </remarks>
 		/// <returns>The message or header stream.</returns>
 		/// <param name="index">The index of the message.</param>
-		/// <param name="headersOnly"><c>true</c> if only the headers should be retrieved; otherwise, <c>false</c>.</param>
+		/// <param name="headersOnly"><see langword="true" /> if only the headers should be retrieved; otherwise, <see langword="false" />.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		Stream GetStream (int index, bool headersOnly = false, CancellationToken cancellationToken = default, ITransferProgress progress = null);
@@ -337,7 +337,7 @@ namespace MailKit {
 		/// </remarks>
 		/// <returns>The message or header stream.</returns>
 		/// <param name="index">The index of the message.</param>
-		/// <param name="headersOnly"><c>true</c> if only the headers should be retrieved; otherwise, <c>false</c>.</param>
+		/// <param name="headersOnly"><see langword="true" /> if only the headers should be retrieved; otherwise, <see langword="false" />.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		Task<Stream> GetStreamAsync (int index, bool headersOnly = false, CancellationToken cancellationToken = default, ITransferProgress progress = null);
@@ -350,7 +350,7 @@ namespace MailKit {
 		/// </remarks>
 		/// <returns>The message or header streams.</returns>
 		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="headersOnly"><c>true</c> if only the headers should be retrieved; otherwise, <c>false</c>.</param>
+		/// <param name="headersOnly"><see langword="true" /> if only the headers should be retrieved; otherwise, <see langword="false" />.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		IList<Stream> GetStreams (IList<int> indexes, bool headersOnly = false, CancellationToken cancellationToken = default, ITransferProgress progress = null);
@@ -363,7 +363,7 @@ namespace MailKit {
 		/// </remarks>
 		/// <returns>The message or header streams.</returns>
 		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="headersOnly"><c>true</c> if only the headers should be retrieved; otherwise, <c>false</c>.</param>
+		/// <param name="headersOnly"><see langword="true" /> if only the headers should be retrieved; otherwise, <see langword="false" />.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		Task<IList<Stream>> GetStreamsAsync (IList<int> indexes, bool headersOnly = false, CancellationToken cancellationToken = default, ITransferProgress progress = null);
@@ -377,7 +377,7 @@ namespace MailKit {
 		/// <returns>The message or header streams.</returns>
 		/// <param name="startIndex">The index of the first stream to get.</param>
 		/// <param name="count">The number of streams to get.</param>
-		/// <param name="headersOnly"><c>true</c> if only the headers should be retrieved; otherwise, <c>false</c>.</param>
+		/// <param name="headersOnly"><see langword="true" /> if only the headers should be retrieved; otherwise, <see langword="false" />.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		IList<Stream> GetStreams (int startIndex, int count, bool headersOnly = false, CancellationToken cancellationToken = default, ITransferProgress progress = null);
@@ -391,7 +391,7 @@ namespace MailKit {
 		/// <returns>The messages.</returns>
 		/// <param name="startIndex">The index of the first stream to get.</param>
 		/// <param name="count">The number of streams to get.</param>
-		/// <param name="headersOnly"><c>true</c> if only the headers should be retrieved; otherwise, <c>false</c>.</param>
+		/// <param name="headersOnly"><see langword="true" /> if only the headers should be retrieved; otherwise, <see langword="false" />.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		Task<IList<Stream>> GetStreamsAsync (int startIndex, int count, bool headersOnly = false, CancellationToken cancellationToken = default, ITransferProgress progress = null);

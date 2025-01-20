@@ -29,6 +29,8 @@ using System.Collections;
 using System.Globalization;
 using System.Collections.Generic;
 
+using MailKit.Search;
+
 namespace MailKit {
 	/// <summary>
 	/// A range of <see cref="UniqueId"/> items.
@@ -41,7 +43,7 @@ namespace MailKit {
 	public class UniqueIdRange : IList<UniqueId>
 	{
 		/// <summary>
-		/// A <see cref="UniqueIdRange"/> that encompases all messages in the folder.
+		/// A <see cref="UniqueIdRange"/> that encompasses all messages in the folder.
 		/// </summary>
 		/// <remarks>
 		/// Represents the range of messages from <see cref="UniqueId.MinValue"/> to
@@ -111,6 +113,17 @@ namespace MailKit {
 			this.validity = start.Validity;
 			this.start = start.Id;
 			this.end = end.Id;
+		}
+
+		/// <summary>
+		/// Gets the sort order of the unique identifiers.
+		/// </summary>
+		/// <remarks>
+		/// Gets the sort order of the unique identifiers.
+		/// </remarks>
+		/// <value>The sort order.</value>
+		public SortOrder SortOrder {
+			get { return start <= end ? SortOrder.Ascending : SortOrder.Descending; }
 		}
 
 		/// <summary>
@@ -187,7 +200,7 @@ namespace MailKit {
 		/// <remarks>
 		/// A <see cref="UniqueIdRange"/> is always read-only.
 		/// </remarks>
-		/// <value><c>true</c> if the range is read only; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the range is read only; otherwise, <see langword="false" />.</value>
 		public bool IsReadOnly {
 			get { return true; }
 		}
@@ -228,7 +241,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Determines whether or not the range contains the specified unique id.
 		/// </remarks>
-		/// <returns><value>true</value> if the specified unique identifier is in the range; otherwise <value>false</value>.</returns>
+		/// <returns><see langword="true" /> if the specified unique identifier is in the range; otherwise, <see langword="false" />.</returns>
 		/// <param name="uid">The unique id.</param>
 		public bool Contains (UniqueId uid)
 		{
@@ -248,7 +261,7 @@ namespace MailKit {
 		/// <param name="array">The array to copy the unique ids to.</param>
 		/// <param name="arrayIndex">The index into the array.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="array"/> is <c>null</c>.
+		/// <paramref name="array"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="arrayIndex"/> is out of range.
@@ -278,7 +291,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Since a <see cref="UniqueIdRange"/> is read-only, unique ids cannot be removed.
 		/// </remarks>
-		/// <returns><value>true</value> if the unique identifier was removed; otherwise <value>false</value>.</returns>
+		/// <returns><see langword="true" /> if the unique identifier was removed; otherwise, <see langword="false" />.</returns>
 		/// <param name="uid">The unique identifier to remove.</param>
 		/// <exception cref="System.NotSupportedException">
 		/// The list does not support removing items.
@@ -437,12 +450,12 @@ namespace MailKit {
 		/// <remarks>
 		/// Attempts to parse a unique identifier range.
 		/// </remarks>
-		/// <returns><c>true</c> if the unique identifier range was successfully parsed; otherwise, <c>false.</c>.</returns>
+		/// <returns><see langword="true" /> if the unique identifier range was successfully parsed; otherwise, <c>false.</c>.</returns>
 		/// <param name="token">The token to parse.</param>
 		/// <param name="validity">The UIDVALIDITY value.</param>
 		/// <param name="range">The unique identifier range.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="token"/> is <c>null</c>.
+		/// <paramref name="token"/> is <see langword="null" />.
 		/// </exception>
 		public static bool TryParse (string token, uint validity, out UniqueIdRange range)
 		{
@@ -480,11 +493,11 @@ namespace MailKit {
 		/// <remarks>
 		/// Attempts to parse a unique identifier range.
 		/// </remarks>
-		/// <returns><c>true</c> if the unique identifier range was successfully parsed; otherwise, <c>false.</c>.</returns>
+		/// <returns><see langword="true" /> if the unique identifier range was successfully parsed; otherwise, <c>false.</c>.</returns>
 		/// <param name="token">The token to parse.</param>
 		/// <param name="range">The unique identifier range.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="token"/> is <c>null</c>.
+		/// <paramref name="token"/> is <see langword="null" />.
 		/// </exception>
 		public static bool TryParse (string token, out UniqueIdRange range)
 		{

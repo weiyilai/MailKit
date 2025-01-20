@@ -638,6 +638,28 @@ namespace UnitTests.Security {
 			return new NtlmTargetInfo (ntChallengeResponse, index, targetInfoLength, true);
 		}
 
+		static byte[] GetNtChallengeResponseClientChallenge (byte[] ntChallengeResponse)
+		{
+			int index = 0;
+
+			// Proof (16-bytes) HMACMD5 of the following data
+			index += 16;
+
+			// 2 bytes of version info
+			index += 2;
+
+			// Z6
+			index += 6;
+
+			// Timestamp
+			index += 8;
+
+			var clientChallenge = new byte[8];
+			Buffer.BlockCopy (ntChallengeResponse, index, clientChallenge, 0, 8);
+
+			return clientChallenge;
+		}
+
 		[Test]
 		public void TestNtlmv2Example ()
 		{
@@ -851,15 +873,15 @@ namespace UnitTests.Security {
 			var expected = GetNtChallengeResponseTargetInfo (authenticate.NtChallengeResponse);
 			Assert.That (targetInfo.ChannelBinding, Is.Not.Null, "ChannelBinding");
 			Assert.That (targetInfo.ChannelBinding, Has.Length.EqualTo (expected.ChannelBinding.Length), "ChannelBinding");
-			Assert.That (targetInfo.ServerName, Is.EqualTo (expected.ServerName), "ServerName");
-			Assert.That (targetInfo.DomainName, Is.EqualTo (expected.DomainName), "DomainName");
-			Assert.That (targetInfo.DnsServerName, Is.EqualTo (expected.DnsServerName), "DnsServerName");
 			Assert.That (targetInfo.DnsDomainName, Is.EqualTo (expected.DnsDomainName), "DnsDomainName");
+			Assert.That (targetInfo.DnsServerName, Is.EqualTo (expected.DnsServerName), "DnsServerName");
 			Assert.That (targetInfo.DnsTreeName, Is.EqualTo (expected.DnsTreeName), "DnsTreeName");
+			Assert.That (targetInfo.DomainName, Is.EqualTo (expected.DomainName), "DomainName");
 			Assert.That (targetInfo.Flags, Is.EqualTo (expected.Flags), "Flags");
+			Assert.That (targetInfo.ServerName, Is.EqualTo (expected.ServerName), "ServerName");
+			Assert.That (targetInfo.SingleHost, Is.EqualTo (expected.SingleHost), "SingleHost");
+			Assert.That (targetInfo.TargetName, Is.EqualTo (expected.TargetName), "TargetName");
 			Assert.That (targetInfo.Timestamp, Is.EqualTo (expected.Timestamp), "Timestamp");
-
-			Console.WriteLine ();
 		}
 	}
 }

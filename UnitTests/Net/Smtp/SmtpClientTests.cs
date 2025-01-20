@@ -336,11 +336,11 @@ namespace UnitTests.Net.Smtp {
 					Assert.Fail ("SSL handshake should have failed with untrusted-root.badssl.com.");
 				} catch (SslHandshakeException ex) {
 					Assert.That (ex.ServerCertificate, Is.Not.Null, "ServerCertificate");
-					SslHandshakeExceptionTests.AssertServerCertificate ((X509Certificate2) ex.ServerCertificate);
+					SslHandshakeExceptionTests.AssertBadSslUntrustedRootServerCertificate ((X509Certificate2) ex.ServerCertificate);
 
 					// Note: This is null on Mono because Mono provides an empty chain.
 					if (ex.RootCertificateAuthority is X509Certificate2 root)
-						SslHandshakeExceptionTests.AssertRootCertificate (root);
+						SslHandshakeExceptionTests.AssertBadSslUntrustedRootCACertificate (root);
 				} catch (Exception ex) {
 					Assert.Ignore ($"SSL handshake failure inconclusive: {ex}");
 				}
@@ -351,11 +351,11 @@ namespace UnitTests.Net.Smtp {
 					Assert.Fail ("SSL handshake should have failed with untrusted-root.badssl.com.");
 				} catch (SslHandshakeException ex) {
 					Assert.That (ex.ServerCertificate, Is.Not.Null, "ServerCertificate");
-					SslHandshakeExceptionTests.AssertServerCertificate ((X509Certificate2) ex.ServerCertificate);
+					SslHandshakeExceptionTests.AssertBadSslUntrustedRootServerCertificate ((X509Certificate2) ex.ServerCertificate);
 
 					// Note: This is null on Mono because Mono provides an empty chain.
 					if (ex.RootCertificateAuthority is X509Certificate2 root)
-						SslHandshakeExceptionTests.AssertRootCertificate (root);
+						SslHandshakeExceptionTests.AssertBadSslUntrustedRootCACertificate (root);
 				} catch (Exception ex) {
 					Assert.Ignore ($"SSL handshake failure inconclusive: {ex}");
 				}
@@ -380,11 +380,11 @@ namespace UnitTests.Net.Smtp {
 					Assert.Fail ("SSL handshake should have failed with untrusted-root.badssl.com.");
 				} catch (SslHandshakeException ex) {
 					Assert.That (ex.ServerCertificate, Is.Not.Null, "ServerCertificate");
-					SslHandshakeExceptionTests.AssertServerCertificate ((X509Certificate2) ex.ServerCertificate);
+					SslHandshakeExceptionTests.AssertBadSslUntrustedRootServerCertificate ((X509Certificate2) ex.ServerCertificate);
 
 					// Note: This is null on Mono because Mono provides an empty chain.
 					if (ex.RootCertificateAuthority is X509Certificate2 root)
-						SslHandshakeExceptionTests.AssertRootCertificate (root);
+						SslHandshakeExceptionTests.AssertBadSslUntrustedRootCACertificate (root);
 				} catch (Exception ex) {
 					Assert.Ignore ($"SSL handshake failure inconclusive: {ex}");
 				}
@@ -395,11 +395,11 @@ namespace UnitTests.Net.Smtp {
 					Assert.Fail ("SSL handshake should have failed with untrusted-root.badssl.com.");
 				} catch (SslHandshakeException ex) {
 					Assert.That (ex.ServerCertificate, Is.Not.Null, "ServerCertificate");
-					SslHandshakeExceptionTests.AssertServerCertificate ((X509Certificate2) ex.ServerCertificate);
+					SslHandshakeExceptionTests.AssertBadSslUntrustedRootServerCertificate ((X509Certificate2) ex.ServerCertificate);
 
 					// Note: This is null on Mono because Mono provides an empty chain.
 					if (ex.RootCertificateAuthority is X509Certificate2 root)
-						SslHandshakeExceptionTests.AssertRootCertificate (root);
+						SslHandshakeExceptionTests.AssertBadSslUntrustedRootCACertificate (root);
 				} catch (Exception ex) {
 					Assert.Ignore ($"SSL handshake failure inconclusive: {ex}");
 				}
@@ -3620,7 +3620,7 @@ namespace UnitTests.Net.Smtp {
 			}
 		}
 
-		static List<SmtpReplayCommand> CreatetPipeliningCommands ()
+		static List<SmtpReplayCommand> CreatePipeliningCommands ()
 		{
 			return new List<SmtpReplayCommand> {
 				new SmtpReplayCommand ("", "comcast-greeting.txt"),
@@ -3637,7 +3637,7 @@ namespace UnitTests.Net.Smtp {
 		[TestCase (true, TestName = "TestPipeliningWithProgress")]
 		public void TestPipelining (bool showProgress)
 		{
-			var commands = CreatetPipeliningCommands ();
+			var commands = CreatePipeliningCommands ();
 
 			using (var client = new SmtpClient ()) {
 				try {
@@ -3695,7 +3695,7 @@ namespace UnitTests.Net.Smtp {
 		[TestCase (true, TestName = "TestPipeliningAsyncWithProgress")]
 		public async Task TestPipeliningAsync (bool showProgress)
 		{
-			var commands = CreatetPipeliningCommands ();
+			var commands = CreatePipeliningCommands ();
 
 			using (var client = new SmtpClient ()) {
 				try {
@@ -3854,6 +3854,234 @@ namespace UnitTests.Net.Smtp {
 				}
 
 				Assert.That (client.IsConnected, Is.True, "Expected the client to still be connected");
+
+				try {
+					await client.DisconnectAsync (true);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Disconnect: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.False, "Failed to disconnect");
+			}
+		}
+
+		static List<SmtpReplayCommand> CreateMailFromAuthRequiredRsetDisconnectCommands ()
+		{
+			return new List<SmtpReplayCommand> {
+				new SmtpReplayCommand ("", "comcast-greeting.txt"),
+				new SmtpReplayCommand ($"EHLO {SmtpClient.DefaultLocalDomain}\r\n", "comcast-ehlo.txt"),
+				new SmtpReplayCommand ("AUTH PLAIN AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "comcast-auth-plain.txt"),
+				new SmtpReplayCommand ("MAIL FROM:<sender@example.com>\r\n", "auth-required.txt", SmtpReplayState.UnexpectedDisconnect),
+				new SmtpReplayCommand ("RSET\r\n", string.Empty)
+			};
+		}
+
+		[Test]
+		public void TestMailFromAuthRequiredRsetDisconnect ()
+		{
+			var commands = CreateMailFromAuthRequiredRsetDisconnectCommands ();
+
+			using (var client = new SmtpClient ()) {
+				try {
+					client.Connect (new SmtpReplayStream (commands, false), "localhost", 25, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.True, "Client failed to connect.");
+
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.Authentication), Is.True, "Failed to detect AUTH extension");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("LOGIN"), "Failed to detect the LOGIN auth mechanism");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("PLAIN"), "Failed to detect the PLAIN auth mechanism");
+
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.EightBitMime), Is.True, "Failed to detect 8BITMIME extension");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.EnhancedStatusCodes), Is.True, "Failed to detect ENHANCEDSTATUSCODES extension");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.Size), Is.True, "Failed to detect SIZE extension");
+				Assert.That (client.MaxSize, Is.EqualTo (36700160), "Failed to parse SIZE correctly");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.StartTLS), Is.True, "Failed to detect STARTTLS extension");
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				try {
+					using (var message = CreateSimpleMessage ())
+						client.Send (message);
+					Assert.Fail ("Expected an ServiceNotAuthenticatedException");
+				} catch (ServiceNotAuthenticatedException) {
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect this exception in Send: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.False, "Expected the client to be disconnected");
+
+				try {
+					client.Disconnect (true);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Disconnect: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.False, "Failed to disconnect");
+			}
+		}
+
+		[Test]
+		public async Task TestMailFromAuthRequiredRsetDisconnectAsync ()
+		{
+			var commands = CreateMailFromAuthRequiredRsetDisconnectCommands ();
+
+			using (var client = new SmtpClient ()) {
+				try {
+					await client.ConnectAsync (new SmtpReplayStream (commands, true), "localhost", 25, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.True, "Client failed to connect.");
+
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.Authentication), Is.True, "Failed to detect AUTH extension");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("LOGIN"), "Failed to detect the LOGIN auth mechanism");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("PLAIN"), "Failed to detect the PLAIN auth mechanism");
+
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.EightBitMime), Is.True, "Failed to detect 8BITMIME extension");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.EnhancedStatusCodes), Is.True, "Failed to detect ENHANCEDSTATUSCODES extension");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.Size), Is.True, "Failed to detect SIZE extension");
+				Assert.That (client.MaxSize, Is.EqualTo (36700160), "Failed to parse SIZE correctly");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.StartTLS), Is.True, "Failed to detect STARTTLS extension");
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				try {
+					using (var message = CreateSimpleMessage ())
+						await client.SendAsync (message);
+					Assert.Fail ("Expected an ServiceNotAuthenticatedException");
+				} catch (ServiceNotAuthenticatedException) {
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect this exception in Send: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.False, "Expected the client to be disconnected");
+
+				try {
+					await client.DisconnectAsync (true);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Disconnect: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.False, "Failed to disconnect");
+			}
+		}
+
+		static List<SmtpReplayCommand> CreateMailFromUnavailableRsetDisconnectCommands ()
+		{
+			return new List<SmtpReplayCommand> {
+				new SmtpReplayCommand ("", "comcast-greeting.txt"),
+				new SmtpReplayCommand ($"EHLO {SmtpClient.DefaultLocalDomain}\r\n", "comcast-ehlo.txt"),
+				new SmtpReplayCommand ("AUTH PLAIN AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "comcast-auth-plain.txt"),
+				new SmtpReplayCommand ("MAIL FROM:<sender@example.com>\r\n", "mailbox-unavailable.txt", SmtpReplayState.UnexpectedDisconnect),
+				new SmtpReplayCommand ("RSET\r\n", string.Empty)
+			};
+		}
+
+		[Test]
+		public void TestMailFromUnavailableRsetDisconnect ()
+		{
+			var commands = CreateMailFromUnavailableRsetDisconnectCommands ();
+
+			using (var client = new SmtpClient ()) {
+				try {
+					client.Connect (new SmtpReplayStream (commands, false), "localhost", 25, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.True, "Client failed to connect.");
+
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.Authentication), Is.True, "Failed to detect AUTH extension");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("LOGIN"), "Failed to detect the LOGIN auth mechanism");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("PLAIN"), "Failed to detect the PLAIN auth mechanism");
+
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.EightBitMime), Is.True, "Failed to detect 8BITMIME extension");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.EnhancedStatusCodes), Is.True, "Failed to detect ENHANCEDSTATUSCODES extension");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.Size), Is.True, "Failed to detect SIZE extension");
+				Assert.That (client.MaxSize, Is.EqualTo (36700160), "Failed to parse SIZE correctly");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.StartTLS), Is.True, "Failed to detect STARTTLS extension");
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				try {
+					using (var message = CreateSimpleMessage ())
+						client.Send (message);
+					Assert.Fail ("Expected an SmtpCommandException");
+				} catch (SmtpCommandException sex) {
+					Assert.That (sex.ErrorCode, Is.EqualTo (SmtpErrorCode.SenderNotAccepted), "Unexpected SmtpErrorCode");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect this exception in Send: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.False, "Expected the client to be disconnected");
+
+				try {
+					client.Disconnect (true);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Disconnect: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.False, "Failed to disconnect");
+			}
+		}
+
+		[Test]
+		public async Task TestMailFromUnavailableRsetDisconnectAsync ()
+		{
+			var commands = CreateMailFromUnavailableRsetDisconnectCommands ();
+
+			using (var client = new SmtpClient ()) {
+				try {
+					await client.ConnectAsync (new SmtpReplayStream (commands, true), "localhost", 25, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.True, "Client failed to connect.");
+
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.Authentication), Is.True, "Failed to detect AUTH extension");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("LOGIN"), "Failed to detect the LOGIN auth mechanism");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("PLAIN"), "Failed to detect the PLAIN auth mechanism");
+
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.EightBitMime), Is.True, "Failed to detect 8BITMIME extension");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.EnhancedStatusCodes), Is.True, "Failed to detect ENHANCEDSTATUSCODES extension");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.Size), Is.True, "Failed to detect SIZE extension");
+				Assert.That (client.MaxSize, Is.EqualTo (36700160), "Failed to parse SIZE correctly");
+				Assert.That (client.Capabilities.HasFlag (SmtpCapabilities.StartTLS), Is.True, "Failed to detect STARTTLS extension");
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				try {
+					using (var message = CreateSimpleMessage ())
+						await client.SendAsync (message);
+					Assert.Fail ("Expected an SmtpCommandException");
+				} catch (SmtpCommandException sex) {
+					Assert.That (sex.ErrorCode, Is.EqualTo (SmtpErrorCode.SenderNotAccepted), "Unexpected SmtpErrorCode");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect this exception in Send: {ex}");
+				}
+
+				Assert.That (client.IsConnected, Is.False, "Expected the client to be disconnected");
 
 				try {
 					await client.DisconnectAsync (true);
@@ -4799,6 +5027,8 @@ namespace UnitTests.Net.Smtp {
 					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
+				client.RequireTLS = true;
+
 				try {
 					using (var message = CreateEightBitMessage ())
 						client.Send (message);
@@ -4855,6 +5085,8 @@ namespace UnitTests.Net.Smtp {
 				} catch (Exception ex) {
 					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
+
+				client.RequireTLS = true;
 
 				try {
 					using (var message = CreateEightBitMessage ())

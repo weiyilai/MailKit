@@ -55,7 +55,7 @@ namespace MailKit {
 		/// </remarks>
 		/// <param name="uri">The URI.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="uri"/> is <c>null</c>.
+		/// <paramref name="uri"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The logger has been disposed.
@@ -78,12 +78,12 @@ namespace MailKit {
 		/// <param name='offset'>The offset of the first byte to log.</param>
 		/// <param name='count'>The number of bytes to log.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -106,12 +106,12 @@ namespace MailKit {
 		/// <param name='offset'>The offset of the first byte to log.</param>
 		/// <param name='count'>The number of bytes to log.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">

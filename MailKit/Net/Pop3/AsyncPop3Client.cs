@@ -108,7 +108,7 @@ namespace MailKit.Net.Pop3
 		/// <param name="mechanism">The SASL mechanism.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="mechanism"/> is <c>null</c>.
+		/// <paramref name="mechanism"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="Pop3Client"/> has been disposed.
@@ -141,17 +141,24 @@ namespace MailKit.Net.Pop3
 		{
 			CheckCanAuthenticate (mechanism, cancellationToken);
 
-			var saslUri = new Uri ("pop://" + engine.Uri.Host);
-			var ctx = GetSaslAuthContext (mechanism, saslUri);
+			using var operation = engine.StartNetworkOperation (NetworkOperationKind.Authenticate);
 
-			var pc = await ctx.AuthenticateAsync (cancellationToken).ConfigureAwait (false);
+			try {
+				var saslUri = new Uri ("pop://" + engine.Uri.Host);
+				var ctx = GetSaslAuthContext (mechanism, saslUri);
 
-			if (pc.Status == Pop3CommandStatus.Error)
-				throw new AuthenticationException ();
+				var pc = await ctx.AuthenticateAsync (cancellationToken).ConfigureAwait (false);
 
-			pc.ThrowIfError ();
+				if (pc.Status == Pop3CommandStatus.Error)
+					throw new AuthenticationException ();
 
-			await OnAuthenticatedAsync (ctx.AuthMessage, cancellationToken).ConfigureAwait (false);
+				pc.ThrowIfError ();
+
+				await OnAuthenticatedAsync (ctx.AuthMessage, cancellationToken).ConfigureAwait (false);
+			} catch (Exception ex) {
+				operation.SetError (ex);
+				throw;
+			}
 		}
 
 		/// <summary>
@@ -181,9 +188,9 @@ namespace MailKit.Net.Pop3
 		/// <param name="credentials">The user's credentials.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="encoding"/> is <c>null</c>.</para>
+		/// <para><paramref name="encoding"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/> is <c>null</c>.</para>
+		/// <para><paramref name="credentials"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="Pop3Client"/> has been disposed.
@@ -216,70 +223,77 @@ namespace MailKit.Net.Pop3
 		{
 			CheckCanAuthenticate (encoding, credentials, cancellationToken);
 
-			var saslUri = new Uri ("pop://" + engine.Uri.Host);
-			string userName, password, message = null;
-			NetworkCredential cred;
+			using var operation = engine.StartNetworkOperation (NetworkOperationKind.Authenticate);
 
-			if ((engine.Capabilities & Pop3Capabilities.Apop) != 0) {
-				var apop = GetApopCommand (encoding, credentials, saslUri);
+			try {
+				var saslUri = new Uri ("pop://" + engine.Uri.Host);
+				string userName, password, message = null;
+				NetworkCredential cred;
 
+				if ((engine.Capabilities & Pop3Capabilities.Apop) != 0) {
+					var apop = GetApopCommand (encoding, credentials, saslUri);
+
+					detector.IsAuthenticating = true;
+
+					try {
+						message = await SendCommandAsync (cancellationToken, encoding, apop).ConfigureAwait (false);
+						engine.State = Pop3EngineState.Transaction;
+					} catch (Pop3CommandException) {
+					} finally {
+						detector.IsAuthenticating = false;
+					}
+
+					if (engine.State == Pop3EngineState.Transaction) {
+						await OnAuthenticatedAsync (message ?? string.Empty, cancellationToken).ConfigureAwait (false);
+						return;
+					}
+				}
+
+				if ((engine.Capabilities & Pop3Capabilities.Sasl) != 0) {
+					foreach (var authmech in SaslMechanism.Rank (engine.AuthenticationMechanisms)) {
+						SaslMechanism sasl;
+
+						cred = credentials.GetCredential (saslUri, authmech);
+
+						if ((sasl = SaslMechanism.Create (authmech, encoding, cred)) == null)
+							continue;
+
+						cancellationToken.ThrowIfCancellationRequested ();
+
+						var ctx = GetSaslAuthContext (sasl, saslUri);
+
+						var pc = await ctx.AuthenticateAsync (cancellationToken).ConfigureAwait (false);
+
+						if (pc.Status == Pop3CommandStatus.Error)
+							continue;
+
+						pc.ThrowIfError ();
+
+						await OnAuthenticatedAsync (ctx.AuthMessage, cancellationToken).ConfigureAwait (false);
+						return;
+					}
+				}
+
+				// fall back to the classic USER & PASS commands...
+				cred = credentials.GetCredential (saslUri, "DEFAULT");
+				userName = utf8 ? SaslMechanism.SaslPrep (cred.UserName) : cred.UserName;
+				password = utf8 ? SaslMechanism.SaslPrep (cred.Password) : cred.Password;
 				detector.IsAuthenticating = true;
 
 				try {
-					message = await SendCommandAsync (cancellationToken, encoding, apop).ConfigureAwait (false);
-					engine.State = Pop3EngineState.Transaction;
+					await SendCommandAsync (cancellationToken, encoding, "USER {0}\r\n", userName).ConfigureAwait (false);
+					message = await SendCommandAsync (cancellationToken, encoding, "PASS {0}\r\n", password).ConfigureAwait (false);
 				} catch (Pop3CommandException) {
+					throw new AuthenticationException ();
 				} finally {
 					detector.IsAuthenticating = false;
 				}
 
-				if (engine.State == Pop3EngineState.Transaction) {
-					await OnAuthenticatedAsync (message ?? string.Empty, cancellationToken).ConfigureAwait (false);
-					return;
-				}
+				await OnAuthenticatedAsync (message, cancellationToken).ConfigureAwait (false);
+			} catch (Exception ex) {
+				operation.SetError (ex);
+				throw;
 			}
-
-			if ((engine.Capabilities & Pop3Capabilities.Sasl) != 0) {
-				foreach (var authmech in SaslMechanism.Rank (engine.AuthenticationMechanisms)) {
-					SaslMechanism sasl;
-
-					cred = credentials.GetCredential (saslUri, authmech);
-
-					if ((sasl = SaslMechanism.Create (authmech, encoding, cred)) == null)
-						continue;
-
-					cancellationToken.ThrowIfCancellationRequested ();
-
-					var ctx = GetSaslAuthContext (sasl, saslUri);
-
-					var pc = await ctx.AuthenticateAsync (cancellationToken).ConfigureAwait (false);
-
-					if (pc.Status == Pop3CommandStatus.Error)
-						continue;
-
-					pc.ThrowIfError ();
-
-					await OnAuthenticatedAsync (ctx.AuthMessage, cancellationToken).ConfigureAwait (false);
-					return;
-				}
-			}
-
-			// fall back to the classic USER & PASS commands...
-			cred = credentials.GetCredential (saslUri, "DEFAULT");
-			userName = utf8 ? SaslMechanism.SaslPrep (cred.UserName) : cred.UserName;
-			password = utf8 ? SaslMechanism.SaslPrep (cred.Password) : cred.Password;
-			detector.IsAuthenticating = true;
-
-			try {
-				await SendCommandAsync (cancellationToken, encoding, "USER {0}\r\n", userName).ConfigureAwait (false);
-				message = await SendCommandAsync (cancellationToken, encoding, "PASS {0}\r\n", password).ConfigureAwait (false);
-			} catch (Pop3CommandException) {
-				throw new AuthenticationException ();
-			} finally {
-				detector.IsAuthenticating = false;
-			}
-
-			await OnAuthenticatedAsync (message, cancellationToken).ConfigureAwait (false);
 		}
 
 		async Task SslHandshakeAsync (SslStream ssl, string host, CancellationToken cancellationToken)
@@ -330,8 +344,8 @@ namespace MailKit.Net.Pop3
 					// re-issue a CAPA command
 					await engine.QueryCapabilitiesAsync (cancellationToken).ConfigureAwait (false);
 				}
-			} catch {
-				engine.Disconnect ();
+			} catch (Exception ex) {
+				engine.Disconnect (ex);
 				secure = false;
 				throw;
 			}
@@ -368,7 +382,7 @@ namespace MailKit.Net.Pop3
 		/// <param name="options">The secure socket options to when connecting.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -411,30 +425,37 @@ namespace MailKit.Net.Pop3
 
 			ComputeDefaultValues (host, ref port, ref options, out var uri, out var starttls);
 
-			var stream = await ConnectNetworkAsync (host, port, cancellationToken).ConfigureAwait (false);
-			stream.WriteTimeout = timeout;
-			stream.ReadTimeout = timeout;
+			using var operation = engine.StartNetworkOperation (NetworkOperationKind.Connect, uri);
 
-			engine.Uri = uri;
+			try {
+				var stream = await ConnectNetworkAsync (host, port, cancellationToken).ConfigureAwait (false);
+				stream.WriteTimeout = timeout;
+				stream.ReadTimeout = timeout;
 
-			if (options == SecureSocketOptions.SslOnConnect) {
-				var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
+				engine.Uri = uri;
 
-				try {
-					await SslHandshakeAsync (ssl, host, cancellationToken).ConfigureAwait (false);
-				} catch (Exception ex) {
-					ssl.Dispose ();
+				if (options == SecureSocketOptions.SslOnConnect) {
+					var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
 
-					throw SslHandshakeException.Create (ref sslValidationInfo, ex, false, "POP3", host, port, 995, 110);
+					try {
+						await SslHandshakeAsync (ssl, host, cancellationToken).ConfigureAwait (false);
+					} catch (Exception ex) {
+						ssl.Dispose ();
+
+						throw SslHandshakeException.Create (ref sslValidationInfo, ex, false, "POP3", host, port, 995, 110);
+					}
+
+					secure = true;
+					stream = ssl;
+				} else {
+					secure = false;
 				}
 
-				secure = true;
-				stream = ssl;
-			} else {
-				secure = false;
+				await PostConnectAsync (stream, host, port, options, starttls, cancellationToken).ConfigureAwait (false);
+			} catch (Exception ex) {
+				operation.SetError (ex);
+				throw;
 			}
-
-			await PostConnectAsync (stream, host, port, options, starttls, cancellationToken).ConfigureAwait (false);
 		}
 
 		/// <summary>
@@ -464,9 +485,9 @@ namespace MailKit.Net.Pop3
 		/// <param name="options">The secure socket options to when connecting.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="socket"/> is <c>null</c>.</para>
+		/// <para><paramref name="socket"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="host"/> is <c>null</c>.</para>
+		/// <para><paramref name="host"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -536,9 +557,9 @@ namespace MailKit.Net.Pop3
 		/// <param name="options">The secure socket options to when connecting.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="stream"/> is <c>null</c>.</para>
+		/// <para><paramref name="stream"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="host"/> is <c>null</c>.</para>
+		/// <para><paramref name="host"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -580,49 +601,52 @@ namespace MailKit.Net.Pop3
 
 			ComputeDefaultValues (host, ref port, ref options, out var uri, out var starttls);
 
-			engine.Uri = uri;
+			using var operation = engine.StartNetworkOperation (NetworkOperationKind.Connect, uri);
 
-			if (options == SecureSocketOptions.SslOnConnect) {
-				var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
+			try {
+				engine.Uri = uri;
 
-				try {
-#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-					await ssl.AuthenticateAsClientAsync (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate), cancellationToken).ConfigureAwait (false);
-#else
-					await ssl.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).ConfigureAwait (false);
-#endif
-				} catch (Exception ex) {
-					ssl.Dispose ();
+				if (options == SecureSocketOptions.SslOnConnect) {
+					var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
 
-					throw SslHandshakeException.Create (ref sslValidationInfo, ex, false, "POP3", host, port, 995, 110);
+					try {
+						await SslHandshakeAsync (ssl, host, cancellationToken).ConfigureAwait (false);
+					} catch (Exception ex) {
+						ssl.Dispose ();
+
+						throw SslHandshakeException.Create (ref sslValidationInfo, ex, false, "POP3", host, port, 995, 110);
+					}
+
+					network = ssl;
+					secure = true;
+				} else {
+					network = stream;
+					secure = false;
 				}
 
-				network = ssl;
-				secure = true;
-			} else {
-				network = stream;
-				secure = false;
-			}
+				if (network.CanTimeout) {
+					network.WriteTimeout = timeout;
+					network.ReadTimeout = timeout;
+				}
 
-			if (network.CanTimeout) {
-				network.WriteTimeout = timeout;
-				network.ReadTimeout = timeout;
+				await PostConnectAsync (network, host, port, options, starttls, cancellationToken).ConfigureAwait (false);
+			} catch (Exception ex) {
+				operation.SetError (ex);
+				throw;
 			}
-
-			await PostConnectAsync (network, host, port, options, starttls, cancellationToken).ConfigureAwait (false);
 		}
 
 		/// <summary>
 		/// Asynchronously disconnect the service.
 		/// </summary>
 		/// <remarks>
-		/// If <paramref name="quit"/> is <c>true</c>, a <c>QUIT</c> command will be issued in order to disconnect cleanly.
+		/// If <paramref name="quit"/> is <see langword="true" />, a <c>QUIT</c> command will be issued in order to disconnect cleanly.
 		/// </remarks>
 		/// <example>
 		/// <code language="c#" source="Examples\Pop3Examples.cs" region="DownloadMessages"/>
 		/// </example>
 		/// <returns>An asynchronous task context.</returns>
-		/// <param name="quit">If set to <c>true</c>, a <c>QUIT</c> command will be issued in order to disconnect cleanly.</param>
+		/// <param name="quit">If set to <see langword="true" />, a <c>QUIT</c> command will be issued in order to disconnect cleanly.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="Pop3Client"/> has been disposed.
@@ -645,7 +669,7 @@ namespace MailKit.Net.Pop3
 			}
 
 			disconnecting = true;
-			engine.Disconnect ();
+			engine.Disconnect (null);
 		}
 
 		/// <summary>
@@ -833,7 +857,7 @@ namespace MailKit.Net.Pop3
 		/// <param name="lang">The language code.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="lang"/> is <c>null</c>.
+		/// <paramref name="lang"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="lang"/> is empty.
@@ -1127,7 +1151,7 @@ namespace MailKit.Net.Pop3
 		/// <param name="indexes">The indexes of the messages.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="indexes"/> is <c>null</c>.
+		/// <paramref name="indexes"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// One or more of the <paramref name="indexes"/> are invalid.
@@ -1279,7 +1303,7 @@ namespace MailKit.Net.Pop3
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="indexes"/> is <c>null</c>.
+		/// <paramref name="indexes"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// One or more of the <paramref name="indexes"/> are invalid.
@@ -1382,7 +1406,7 @@ namespace MailKit.Net.Pop3
 		/// </remarks>
 		/// <returns>The message or header stream.</returns>
 		/// <param name="index">The index of the message.</param>
-		/// <param name="headersOnly"><c>true</c> if only the headers should be retrieved; otherwise, <c>false</c>.</param>
+		/// <param name="headersOnly"><see langword="true" /> if only the headers should be retrieved; otherwise, <see langword="false" />.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentOutOfRangeException">
@@ -1430,11 +1454,11 @@ namespace MailKit.Net.Pop3
 		/// </remarks>
 		/// <returns>The message or header streams.</returns>
 		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="headersOnly"><c>true</c> if only the headers should be retrieved; otherwise, <c>false</c>.</param>
+		/// <param name="headersOnly"><see langword="true" /> if only the headers should be retrieved; otherwise, <see langword="false" />.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="indexes"/> is <c>null</c>.
+		/// <paramref name="indexes"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// One or more of the <paramref name="indexes"/> are invalid.
@@ -1486,7 +1510,7 @@ namespace MailKit.Net.Pop3
 		/// <returns>The message or header streams.</returns>
 		/// <param name="startIndex">The index of the first stream to get.</param>
 		/// <param name="count">The number of streams to get.</param>
-		/// <param name="headersOnly"><c>true</c> if only the headers should be retrieved; otherwise, <c>false</c>.</param>
+		/// <param name="headersOnly"><see langword="true" /> if only the headers should be retrieved; otherwise, <see langword="false" />.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentOutOfRangeException">
@@ -1584,7 +1608,7 @@ namespace MailKit.Net.Pop3
 		/// <param name="indexes">The indexes of the messages.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="indexes"/> is <c>null</c>.
+		/// <paramref name="indexes"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// One or more of the <paramref name="indexes"/> are invalid.

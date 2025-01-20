@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata minClientVersion="2.12">
     <id>MailKitLite</id>
-    <version>4.3.0</version>
+    <version>4.9.0</version>
     <title>MailKit</title>
     <authors>Jeffrey Stedfast</authors>
     <owners>Jeffrey Stedfast</owners>
@@ -26,15 +26,16 @@ Features include:
     </description>
     <summary>An Open Source .NET mail-client library for Windows, Mac, Linux, and mobile platforms such as iOS and Android.</summary>
     <releaseNotes>
-* Fixed an ArgumentOutOfRangeException error in Fetch(int min, int max, ...) where min and max were greater than folder.Count. (issue #1640)
-* Fixed parsing of IMAP FETCH (message/stream) responses with unsolicited FLAGS.
-* Fixed support for the IMAP FILTERS extension. Previously this extension was not properly detected.
-* When parsing IMAP CAPABILITIES, treat lone '+' tokens as atoms. (issue #1654)
-* Bumped MimeKit dependency to 4.3.0.
+* Added an IMAP work-around for mail.ru which sometimes sends integer tokens as decimals in its responses. (issue #1838)
+* Added a workaround for GMail IMAP BODY responses that include multipart expressions without any children (e.g. `("ALTERNATIVE")`). (issue #1841)
+* Fixed default system proxy to handle null credentials and check if the targetUri is bypassed. (issue #1852)
+* Dropped support for net6.0 (Microsoft support ended Nov 12, 2024).
+* Bumped System.Threading.Tasks.Extensions dependency to 4.6.0.
+* Bumped MimeKit dependency to 4.9.0.
     </releaseNotes>
     <copyright>.NET Foundation and Contributors</copyright>
     <language>en-US</language>
-    <tags>smtp pop3 imap mime security arc dkim smime s/mime openpgp pgp mbox mail email parser tnef net462 net47 net48 net6.0 netstandard netstandard2.0 netstandard2.1</tags>
+    <tags>smtp pop3 imap mime security arc dkim smime s/mime openpgp pgp mbox mail email parser tnef net462 net47 net48 net8.0 netstandard netstandard2.0 netstandard2.1</tags>
     <readme>docs\README.md</readme>
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.6.2" />
@@ -52,34 +53,32 @@ Features include:
     </frameworkAssemblies>
     <dependencies>
       <group targetFramework="net462">
-        <dependency id="System.Formats.Asn1" version="8.0.0" />
-        <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" />
-        <dependency id="MimeKitLite" version="4.3.0" />
+        <dependency id="System.Formats.Asn1" version="8.0.1" />
+        <dependency id="System.Threading.Tasks.Extensions" version="4.6.0" />
+        <dependency id="MimeKitLite" version="4.9.0" />
       </group>
       <group targetFramework="net47">
-        <dependency id="System.Formats.Asn1" version="8.0.0" />
-        <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" />
-        <dependency id="MimeKitLite" version="4.3.0" />
+        <dependency id="System.Formats.Asn1" version="8.0.1" />
+        <dependency id="System.Threading.Tasks.Extensions" version="4.6.0" />
+        <dependency id="MimeKitLite" version="4.9.0" />
       </group>
       <group targetFramework="net48">
-        <dependency id="System.Formats.Asn1" version="8.0.0" />
-        <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" />
-        <dependency id="MimeKitLite" version="4.3.0" />
-      </group>
-      <group targetFramework="net6.0">
-        <dependency id="MimeKitLite" version="4.3.0" />
+        <dependency id="System.Formats.Asn1" version="8.0.1" />
+        <dependency id="System.Threading.Tasks.Extensions" version="4.6.0" />
+        <dependency id="MimeKitLite" version="4.9.0" />
       </group>
       <group targetFramework="net8.0">
-        <dependency id="MimeKit" version="4.3.0" />
+        <dependency id="System.Formats.Asn1" version="8.0.1" />
+        <dependency id="MimeKitLite" version="4.9.0" />
       </group>
       <group targetFramework="netstandard2.0">
-        <dependency id="System.Formats.Asn1" version="8.0.0" />
-        <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" />
-        <dependency id="MimeKitLite" version="4.3.0" />
+        <dependency id="System.Formats.Asn1" version="8.0.1" />
+        <dependency id="System.Threading.Tasks.Extensions" version="4.6.0" />
+        <dependency id="MimeKitLite" version="4.9.0" />
       </group>
       <group targetFramework="netstandard2.1">
-        <dependency id="System.Formats.Asn1" version="8.0.0" />
-        <dependency id="MimeKitLite" version="4.3.0" />
+        <dependency id="System.Formats.Asn1" version="8.0.1" />
+        <dependency id="MimeKitLite" version="4.9.0" />
       </group>
     </dependencies>
   </metadata>
@@ -108,10 +107,6 @@ Features include:
     <file src="..\MailKit\bin\Release\net48\MailKitLite.pdb" target="lib\net48\MailKitLite.pdb" />
     <file src="..\MailKit\bin\Release\net48\MailKitLite.xml" target="lib\net48\MailKitLite.xml" />
     <file src="..\MailKit\bin\Release\net48\MailKitLite.dll.config" target="lib\net48\MailKitLite.dll.config" />
-    <file src="..\MailKit\bin\Release\net6.0\MailKitLite.dll" target="lib\net6.0\MailKitLite.dll" />
-    <file src="..\MailKit\bin\Release\net6.0\MailKitLite.pdb" target="lib\net6.0\MailKitLite.pdb" />
-    <file src="..\MailKit\bin\Release\net6.0\MailKitLite.xml" target="lib\net6.0\MailKitLite.xml" />
-    <file src="..\MailKit\bin\Release\net6.0\MailKitLite.dll.config" target="lib\net6.0\MailKitLite.dll.config" />
     <file src="..\MailKit\bin\Release\net8.0\MailKitLite.dll" target="lib\net8.0\MailKitLite.dll" />
     <file src="..\MailKit\bin\Release\net8.0\MailKitLite.pdb" target="lib\net8.0\MailKitLite.pdb" />
     <file src="..\MailKit\bin\Release\net8.0\MailKitLite.xml" target="lib\net8.0\MailKitLite.xml" />

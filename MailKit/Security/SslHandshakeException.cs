@@ -44,7 +44,7 @@ namespace MailKit.Security
 	/// </summary>
 	/// <remarks>
 	/// <para>The exception that is thrown when there is an error during the SSL/TLS handshake.</para>
-	/// <para>When this exception occurrs, it typically means that the IMAP, POP3 or SMTP server that
+	/// <para>When this exception occurs, it typically means that the IMAP, POP3 or SMTP server that
 	/// you are connecting to is using an SSL certificate that is either expired or untrusted by
 	/// your system.</para>
 	/// <para>Often times, mail servers will use self-signed certificates instead of using a certificate
@@ -70,12 +70,12 @@ namespace MailKit.Security
 		/// Initializes a new instance of the <see cref="SslHandshakeException"/> class.
 		/// </summary>
 		/// <remarks>
-		/// Creates a new <see cref="SslHandshakeException"/> from the seriaized data.
+		/// Creates a new <see cref="SslHandshakeException"/> from the serialized data.
 		/// </remarks>
 		/// <param name="info">The serialization info.</param>
 		/// <param name="context">The streaming context.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="info"/> is <c>null</c>.
+		/// <paramref name="info"/> is <see langword="null" />.
 		/// </exception>
 		[Obsolete ("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.")]
 		protected SslHandshakeException (SerializationInfo info, StreamingContext context) : base (info, context)
@@ -162,7 +162,7 @@ namespace MailKit.Security
 		/// <param name="info">The serialization info.</param>
 		/// <param name="context">The streaming context.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="info"/> is <c>null</c>.
+		/// <paramref name="info"/> is <see langword="null" />.
 		/// </exception>
 		[SecurityCritical]
 #if NET8_0_OR_GREATER

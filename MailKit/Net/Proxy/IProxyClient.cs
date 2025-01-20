@@ -78,7 +78,7 @@ namespace MailKit.Net.Proxy
 		/// <remarks>
 		/// Gets or sets the local IP end point to use when connecting to a remote host.
 		/// </remarks>
-		/// <value>The local IP end point or <c>null</c> to use the default end point.</value>
+		/// <value>The local IP end point or <see langword="null" /> to use the default end point.</value>
 		IPEndPoint LocalEndPoint { get; set; }
 
 		/// <summary>
@@ -88,11 +88,11 @@ namespace MailKit.Net.Proxy
 		/// Connects to the target host and port through the proxy server.
 		/// </remarks>
 		/// <returns>The connected network stream.</returns>
-		/// <param name="host">The host name of the proxy server.</param>
-		/// <param name="port">The proxy server port.</param>
+		/// <param name="host">The host name of the target server.</param>
+		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -118,11 +118,11 @@ namespace MailKit.Net.Proxy
 		/// Asynchronously connects to the target host and port through the proxy server.
 		/// </remarks>
 		/// <returns>The connected network stream.</returns>
-		/// <param name="host">The host name of the proxy server.</param>
-		/// <param name="port">The proxy server port.</param>
+		/// <param name="host">The host name of the target server.</param>
+		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -148,12 +148,12 @@ namespace MailKit.Net.Proxy
 		/// Connects to the target host and port through the proxy server.
 		/// </remarks>
 		/// <returns>The connected network stream.</returns>
-		/// <param name="host">The host name of the proxy server.</param>
-		/// <param name="port">The proxy server port.</param>
+		/// <param name="host">The host name of the target server.</param>
+		/// <param name="port">The target server port.</param>
 		/// <param name="timeout">The timeout, in milliseconds.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -182,12 +182,12 @@ namespace MailKit.Net.Proxy
 		/// Asynchronously connects to the target host and port through the proxy server.
 		/// </remarks>
 		/// <returns>The connected network stream.</returns>
-		/// <param name="host">The host name of the proxy server.</param>
-		/// <param name="port">The proxy server port.</param>
+		/// <param name="host">The host name of the target server.</param>
+		/// <param name="port">The target server port.</param>
 		/// <param name="timeout">The timeout, in milliseconds.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.

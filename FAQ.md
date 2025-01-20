@@ -6,6 +6,7 @@
 
 * [Are MimeKit and MailKit completely free? Can I use them in my proprietary product(s)?](#completely-free)
 * [Why do I get `NotSupportedException: No data is available for encoding ######. For information on defining a custom encoding, see the documentation for the Encoding.RegisterProvider method.`?](#register-provider)
+* [Why do I get a `TypeLoadException` when I try to create a new MimeMessage?](#type-load-exception)
 * [Why do I get `"MailKit.Security.SslHandshakeException: An error occurred while attempting to establish an SSL or TLS connection."` when I try to Connect?](#ssl-handshake-exception)
 * [How can I get a protocol log for IMAP, POP3, or SMTP to see what is going wrong?](#protocol-log)
 * [Why doesn't MailKit find some of my GMail POP3 or IMAP messages?](#gmail-hidden-messages)
@@ -23,7 +24,7 @@
 * [How can I save attachments?](#save-attachments)
 * [How can I get the email addresses in the From, To, and Cc headers?](#address-headers)
 * [Why do attachments with unicode filenames appear as "ATT0####.dat" in Outlook?](#untitled-attachments)
-* [How can I decrypt PGP messages that are embedded in the main message text?](#decyrpt-inline-pgp)
+* [How can I decrypt PGP messages that are embedded in the main message text?](#decrypt-inline-pgp)
 * [How can I reply to a message?](#reply-message)
 * [How can I forward a message?](#forward-message)
 * [Why does text show up garbled in my ASP.NET Core / .NET Core / .NET 5 app?](#garbled-text)
@@ -37,6 +38,7 @@
 * [Why doesn't ImapFolder.MoveTo() move the message out of the source folder?](#imap-move-does-not-move)
 * [How can I mark messages as read using IMAP?](#imap-mark-as-read)
 * [How can I re-synchronize the cache for an IMAP folder?](#imap-folder-resync)
+* [How can I login using a shared mailbox in Office365?](#office365-shared-mailboxes)
 
 ### SmtpClient
 
@@ -57,12 +59,40 @@ Yes. MimeKit and MailKit are both completely free and open source. They are both
 In .NET Core, Microsoft decided to split out the non-Unicode text encodings into a separate NuGet package called
 [System.Text.Encoding.CodePages](https://www.nuget.org/packages/System.Text.Encoding.CodePages).
 
-MimeKit already pulls in a reference to this NuGet package, so you shsouldn't need to add a reference to it in
+MimeKit already pulls in a reference to this NuGet package, so you shouldn't need to add a reference to it in
 your project. That said, you will still need to register the encoding provider. It is recommended that you add
 the following line of code to your program initialization (e.g. the beginning of your program's Main() method):
 
 ```csharp
 System.Text.Encoding.RegisterProvider (System.Text.CodePagesEncodingProvider.Instance);
+```
+
+### <a name="type-load-exception">Q: Why do I get a `TypeLoadException` when I try to create a new MimeMessage?</a>
+
+This only seems to happen in cases where the application is built for .NET Framework (v4.x) and seems to be most
+common for ASP.NET web applications that were built using Visual Studio 2019 (it is unclear whether this happens
+with Visual Studio 2022 as well).
+
+The issue is that some (older?) versions of MSBuild do not correctly generate `\*.dll.config`, `app.config`
+and/or `web.config` files with proper assembly version binding redirects.
+
+If this problem is happening to you, make sure to use MimeKit and MailKit >= v4.0 which include `MimeKit.dll.config`
+and `MailKit.dll.config`.
+
+The next step is to manually edit your application's `app.config` (or `web.config`) to add a binding redirect
+for `System.Runtime.CompilerServices.Unsafe`:
+
+```xml
+<configuration>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <assemblyIdentity name="System.Runtime.CompilerServices.Unsafe" publicKeyToken="b03f5f7f11d50a3a" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-6.0.0.0" newVersion="6.0.0.0" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+</configuration>
 ```
 
 ### <a id="ssl-handshake-exception">Q: Why do I get `"MailKit.Security.SslHandshakeException: An error occurred while attempting to establish an SSL or TLS connection."` when I try to Connect?</a>
@@ -114,7 +144,7 @@ by a known and trusted Certificate Authority, the above error will occur.
 If you are on a Linux system or are running a web service in a Linux container, it might be possible to use the following command to install
 the standard set of Certificate Authority root certificates using the following command:
 
-```
+```text
 apt update && apt install -y ca-certificates
 ```
 
@@ -163,7 +193,7 @@ bool MyServerCertificateValidationCallback (object sender, X509Certificate certi
 ```
 
 The downside of the above example is that it requires hard-coding known values for "trusted" mail server
-certificates which can quickly become unweildy to deal with if your program is meant to be used with
+certificates which can quickly become unwieldy to deal with if your program is meant to be used with
 a wide range of mail servers.
 
 The best approach would be to prompt the user with a dialog explaining that the certificate is
@@ -261,7 +291,7 @@ GMail Settings page and set your options to look like this:
 
 ### <a id="gmail-access">Q: How can I access GMail using MailKit?</a>
 
-As of the end of May, 2022, Google no longer allows enabling "Less secure apps".
+As of September 30th, 2024, authentication using only a username and password is [no longer supported by Google](https://support.google.com/accounts/answer/6010255?hl=en).
 
 There are now only 2 options to choose from:
 
@@ -312,17 +342,20 @@ var codeFlow = new GoogleAuthorizationCodeFlow (new GoogleAuthorizationCodeFlow.
     // Cache tokens in ~/.local/share/google-filedatastore/CredentialCacheFolder on Linux/Mac
     DataStore = new FileDataStore ("CredentialCacheFolder", false),
     Scopes = new [] { "https://mail.google.com/" },
-    ClientSecrets = clientSecrets
+    ClientSecrets = clientSecrets,
+    LoginHint = GMailAccount
 });
 
+// Note: For a web app, you'll want to use AuthorizationCodeWebApp instead.
 var codeReceiver = new LocalServerCodeReceiver ();
 var authCode = new AuthorizationCodeInstalledApp (codeFlow, codeReceiver);
+
 var credential = await authCode.AuthorizeAsync (GMailAccount, CancellationToken.None);
 
-if (credential.Token.IsExpired (SystemClock.Default))
+if (credential.Token.IsStale)
     await credential.RefreshTokenAsync (CancellationToken.None);
 
-var oauth2 = new SaslMechanismOAuth2 (credential.UserId, credential.Token.AccessToken);
+var oauth2 = new SaslMechanismOAuthBearer (credential.UserId, credential.Token.AccessToken);
 
 using (var client = new ImapClient ()) {
     await client.ConnectAsync ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
@@ -1001,7 +1034,7 @@ foreach (var param in attachment.ContentDisposition.Parameters) {
 }
 ```
 
-### <a id="decyrpt-inline-pgp">Q: How can I decrypt PGP messages that are embedded in the main message text?</a>
+### <a id="decrypt-inline-pgp">Q: How can I decrypt PGP messages that are embedded in the main message text?</a>
 
 Some PGP-enabled mail clients, such as Thunderbird, embed encrypted PGP blurbs within the `text/plain` body
 of the message rather than using the PGP/MIME format that MimeKit prefers.
@@ -1058,7 +1091,7 @@ public Stream GetDecryptedStream (Stream encryptedData)
 ```
 
 The first variant is useful in cases where the encrypted PGP blurb is also digitally signed, allowing you to get
-your hands on the list of digitial signatures in order for you to verify each of them.
+your hands on the list of digital signatures in order for you to verify each of them.
 
 To decrypt the content of the message, you'll want to locate the `TextPart` (in this case, it'll just be
 `message.Body`) and then do this:
@@ -1094,6 +1127,8 @@ the same way you'd create any other message. There are only a few slight differe
 3. You will want to copy the original message's `References` header into the reply message's
    `References` header and then append the original message's `Message-Id` header.
 4. You will probably want to "quote" the original message's text in the reply.
+5. If you are generating an automatic reply, you should also follow [RFC3834](https://www.rfc-editor.org/rfc/rfc3834)
+   and set the `Auto-Submitted` value to `auto-replied`.
 
 If this logic were to be expressed in code, it might look something like this:
 
@@ -1120,8 +1155,8 @@ public static MimeMessage Reply (MimeMessage message, MailboxAddress from, bool 
     }
 
     // set the reply subject
-    if (!message.Subject.StartsWith ("Re:", StringComparison.OrdinalIgnoreCase))
-        reply.Subject = "Re: " + message.Subject;
+    if (!message.Subject?.StartsWith ("Re:", StringComparison.OrdinalIgnoreCase))
+        reply.Subject = "Re: " + (message.Subject ?? string.Empty);
     else
         reply.Subject = message.Subject;
 
@@ -1132,6 +1167,9 @@ public static MimeMessage Reply (MimeMessage message, MailboxAddress from, bool 
             reply.References.Add (id);
         reply.References.Add (message.MessageId);
     }
+
+    // if this is an automatic reply, be sure to specify this using the Auto-Submitted header in order to avoid (infinite) mail loops
+    reply.Headers.Add (HeaderId.AutoSubmitted, "auto-replied");
 
     // quote the original message text
     using (var quoted = new StringWriter ()) {
@@ -1247,8 +1285,8 @@ public class ReplyVisitor : MimeVisitor
         }
 
         // set the reply subject
-        if (!message.Subject.StartsWith ("Re:", StringComparison.OrdinalIgnoreCase))
-            reply.Subject = "Re: " + message.Subject;
+        if (!message.Subject?.StartsWith ("Re:", StringComparison.OrdinalIgnoreCase))
+            reply.Subject = "Re: " + (message.Subject ?? string.Empty);
         else
             reply.Subject = message.Subject;
 
@@ -1434,8 +1472,8 @@ public static MimeMessage Forward (MimeMessage original, MailboxAddress from, IE
     message.To.AddRange (to);
 
     // set the forwarded subject
-    if (!original.Subject.StartsWith ("FW:", StringComparison.OrdinalIgnoreCase))
-        message.Subject = "FW: " + original.Subject;
+    if (!original.Subject?.StartsWith ("FW:", StringComparison.OrdinalIgnoreCase))
+        message.Subject = "FW: " + (original.Subject ?? string.Empty);
     else
         message.Subject = original.Subject;
 
@@ -1467,8 +1505,8 @@ public static MimeMessage Forward (MimeMessage original, MailboxAddress from, IE
     message.To.AddRange (to);
 
     // set the forwarded subject
-    if (!original.Subject.StartsWith ("FW:", StringComparison.OrdinalIgnoreCase))
-        message.Subject = "FW: " + original.Subject;
+    if (!original.Subject?.StartsWith ("FW:", StringComparison.OrdinalIgnoreCase))
+        message.Subject = "FW: " + (original.Subject ?? string.Empty);
     else
         message.Subject = original.Subject;
 
@@ -1476,7 +1514,7 @@ public static MimeMessage Forward (MimeMessage original, MailboxAddress from, IE
     using (var text = new StringWriter ()) {
         text.WriteLine ();
         text.WriteLine ("-------- Original Message --------");
-        text.WriteLine ("Subject: {0}", original.Subject);
+        text.WriteLine ("Subject: {0}", original.Subject ?? string.Empty);
         text.WriteLine ("Date: {0}", DateUtils.FormatDate (original.Date));
         text.WriteLine ("From: {0}", original.From);
         text.WriteLine ("To: {0}", original.To);
@@ -1636,7 +1674,7 @@ folder.RemoveFlags (uids, MessageFlags.Seen, true);
 
 ### <a id="imap-folder-resync">Q: How can I re-synchronize the cache for an IMAP folder?</a>
 
-Assuming your IMAP server does not support the `QRESYNC` extension (which simplifies this proceedure a ton),
+Assuming your IMAP server does not support the `QRESYNC` extension (which simplifies this procedure a ton),
 here is some simple code to illustrate how to go about re-synchronizing your cache with the remote IMAP
 server.
 
@@ -1730,6 +1768,31 @@ static void ResyncFolder (ImapFolder folder, List<CachedMessageInfo> cache, ref 
     // Tada! Now we are resynchronized with the server!
 }
 ```
+
+### <a href="office365-shared-mailboxes">Q: How can I login using a shared mailbox in Office365?</a>
+
+```csharp
+var result = await GetPublicClientOAuth2CredentialsAsync ("IMAP", "sharedMailboxName@custom-domain.com");
+
+// Note: We always use result.Account.Username instead of `Username` because the user may have selected an alternative account.
+var oauth2 = new SaslMechanismOAuth2 (result.Account.Username, result.AccessToken);
+
+using (var client = new ImapClient ()) {
+    await client.ConnectAsync ("outlook.office365.com", 993, SecureSocketOptions.SslOnConnect);
+    await client.AuthenticateAsync (oauth2);
+
+    // ...
+
+    await client.DisconnectAsync (true);
+}
+```
+
+Notes:
+
+1. The `GetPublicClientOAuth2CredentialsAsync()` method used in this example code snippet can be found in the
+[ExchangeOAuth2.md](ExchangeOAuth2.md#desktop-and-mobile-applications) documentation.
+2. Some users have reported that they need to use `"username@custom-domain.com\\sharedMailboxName"` as their
+username instead of `"sharedMailboxName@custom-domain.com"`.
 
 ## SmtpClient
 
